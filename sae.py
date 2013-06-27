@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     estimator = SparseAutoEncoder(n_filters=n_filters,
                                   lmbd=0.0001, beta=3, sparsityParam=0.01,
-                                  std_dev=0.01, maxfun=500, verbose=True)
+                                  std_dev=0.01, maxfun=1000, verbose=True)
     estimator.fit(patches)
 
     pylab.figure(0)
@@ -156,7 +156,16 @@ if __name__ == "__main__":
         rows = max(int(numpy.sqrt(n_filters)), 2)
         cols = max(int(numpy.sqrt(n_filters)), 2)
         pylab.subplot(rows, cols, i + 1)
-        pylab.pcolor(estimator.W_[i].reshape(patch_width, patch_width),
+        pylab.imshow(estimator.W_[i].reshape(patch_width, patch_width),
+                     cmap=pylab.cm.gray)
+        pylab.xticks(())
+        pylab.yticks(())
+    pylab.figure(1)
+    for i in range(estimator.W_.shape[0]):
+        rows = max(int(numpy.sqrt(n_filters)), 2)
+        cols = max(int(numpy.sqrt(n_filters)), 2)
+        pylab.subplot(rows, cols, i + 1)
+        pylab.imshow(patches[i].reshape((patch_width, patch_width)),
                      cmap=pylab.cm.gray)
         pylab.xticks(())
         pylab.yticks(())
