@@ -39,9 +39,12 @@ class SparseAutoEncoder(object):
         self.n_samples = X.shape[0]
         self.n_inputs = X.shape[1]
         self.X = X
-
+        self.indices = (self.n_filters*self.n_inputs,
+                        2*self.n_filters*self.n_inputs,
+                        2*self.n_filters*self.n_inputs+self.n_filters)
         theta = numpy.random.randn(self.n_filters*self.n_inputs*2
             + self.n_filters + self.n_inputs) * self.std_dev
+
         def objective(theta):
             return self.error_grad(theta)
         def error(theta):
@@ -59,16 +62,9 @@ class SparseAutoEncoder(object):
         self.W_ = W1
     
     def __vector_to_matrices(self, theta):
-        W1 = theta[:self.n_filters*self.n_inputs] \
-            .reshape((self.n_filters, self.n_inputs))
-        W2 = theta[self.n_filters*self.n_inputs:
-                   2*self.n_filters*self.n_inputs] \
-            .reshape((self.n_inputs, self.n_filters))
-        b1 = theta[2*self.n_filters*self.n_inputs:
-                   2*self.n_filters*self.n_inputs+self.n_filters] \
-            .reshape(self.n_filters)
-        b2 = theta[2*self.n_filters*self.n_inputs+self.n_filters:] \
-            .reshape(self.n_inputs)
+        w1, w2, b1, b2 = numpy.split(theta, self.indices)
+        W1 = w1.reshape((self.n_filters, self.n_inputs))
+        W2 = w2.reshape((self.n_inputs, self.n_filters))
         return W1, W2, b1, b2
 
     def __forward(self, X):
