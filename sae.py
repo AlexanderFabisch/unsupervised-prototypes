@@ -28,12 +28,15 @@ def sigmoid_der(z):
 
 
 class SparseAutoEncoder(object):
-    def __init__(self, n_filters, lmbd, beta, sparsityParam, std_dev):
+    def __init__(self, n_filters, lmbd, beta, sparsityParam, std_dev, maxfun,
+                 verbose=False):
         self.n_filters = n_filters
         self.lmbd = lmbd
         self.beta = beta
         self.sparsityParam = sparsityParam
         self.std_dev = std_dev
+        self.maxfun = maxfun
+        self.verbose = verbose
 
     def fit(self, X):
         self.n_samples = X.shape[0]
@@ -54,7 +57,8 @@ class SparseAutoEncoder(object):
         #assert grad_error < 1e-4, "Gradient error = %f" % grad_error
 
         theta, s, d = fmin_l_bfgs_b(error, theta, grad,
-                                    maxfun=100, iprint=1) # TODO params
+                                    maxfun=self.maxfun,
+                                    iprint=1 if self.verbose else -1)
         W1, W2, b1, b2 = self.__vector_to_matrices(theta)
         self.W_ = W1
     
@@ -134,26 +138,19 @@ if __name__ == "__main__":
 
     dataset = fetch_olivetti_faces(shuffle=True)
     faces = dataset.data
-
     n_samples, n_features = faces.shape
-
     faces = faces.reshape(n_samples, 64, 64)
-
-    print("Dataset consists of %d faces" % n_samples)
-
     patches = [extract_patches_2d(faces[i], (patch_width, patch_width),
                                   max_patches=n_patches, random_state=i)
             for i in range(n_samples)]
     patches = numpy.array(patches).reshape(-1, patch_width * patch_width)
+    print("Dataset consists of %d faces" % n_samples)
 
     estimator = SparseAutoEncoder(n_filters=n_filters,
-                                  lmbd=0.0001,
-                                  beta=3,
-                                  sparsityParam=0.01,
-                                  std_dev=1.0)
+                                  lmbd=0.0001, beta=3, sparsityParam=0.01,
+                                  std_dev=0.01, maxfun=500, verbose=True)
     estimator.fit(patches)
 
-    # Some plotting
     pylab.figure(0)
     for i in range(estimator.W_.shape[0]):
         rows = max(int(numpy.sqrt(n_filters)), 2)
