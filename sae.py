@@ -1,11 +1,11 @@
 import numpy
 import pylab
-from scipy.optimize import * # TODO include only one optimizer
+from scipy.optimize import fmin_l_bfgs_b
 from sklearn.feature_extraction.image import extract_patches_2d
 from sklearn.datasets import fetch_olivetti_faces
 
 
-def check_grad(fun, grad, theta, eps=1e-10):
+def check_grad(fun, grad, theta, eps=1e-4):
     exact = grad(theta)
     approx = numpy.ndarray(*theta.shape)
     for i in range(len(theta)):
@@ -45,19 +45,16 @@ class SparseAutoEncoder(object):
         theta = numpy.random.randn(self.n_filters*self.n_inputs*2
             + self.n_filters + self.n_inputs) * self.std_dev
 
-        def objective(theta):
-            return self.error_grad(theta)
         def error(theta):
             return self.error(theta)
         def grad(theta):
             return self.grad(theta)
-        grad_error = check_grad(error, grad, theta)
-        assert grad_error < 1e-10, "Gradient error = %f" % grad_error
 
-        #theta = fmin(error, theta, maxiter=50, full_output=True, disp=True)
-        #theta = fmin_ncg(error, theta, grad)
-        theta, s, d = fmin_l_bfgs_b(objective, theta,
-                               maxfun=50, iprint=1) # TODO params
+        #grad_error = check_grad(error, grad, theta, eps=1e-4)
+        #assert grad_error < 1e-4, "Gradient error = %f" % grad_error
+
+        theta, s, d = fmin_l_bfgs_b(error, theta, grad,
+                                    maxfun=100, iprint=1) # TODO params
         W1, W2, b1, b2 = self.__vector_to_matrices(theta)
         self.W_ = W1
     
@@ -77,7 +74,7 @@ class SparseAutoEncoder(object):
     def __cost(self, meanZ1, Z2, X):
         dEdZ2 = Z2-X
         cost = numpy.sum(dEdZ2**2) / (2*self.n_samples)
-        cost += self.lmbd/2 * numpy.sum(self.W1**2) + numpy.sum(self.W2**2)
+        cost += self.lmbd/2 * (numpy.sum(self.W1**2) + numpy.sum(self.W2**2))
         cost += self.beta * \
             numpy.sum(self.sparsityParam *
                       numpy.log(self.sparsityParam / meanZ1) +
@@ -131,42 +128,37 @@ class SparseAutoEncoder(object):
 if __name__ == "__main__":
     numpy.random.seed(0)
 
-    patch_width = 2#16
-    n_patches = 1#25
-    n_filters = 2#64
-    maxfun = 50
+    patch_width = 16
+    n_patches = 25
+    n_filters = 25
 
     dataset = fetch_olivetti_faces(shuffle=True)
     faces = dataset.data
 
     n_samples, n_features = faces.shape
 
-    # global centering
-    faces_centered = faces - faces.mean(axis=0)
-
-    # local centering
-    faces_centered -= faces_centered.mean(axis=1).reshape(n_samples, -1)
-    faces_centered = faces_centered.reshape(n_samples, 64, 64)
+    faces = faces.reshape(n_samples, 64, 64)
 
     print("Dataset consists of %d faces" % n_samples)
 
-    patches = [extract_patches_2d(faces_centered[i], (patch_width, patch_width),
-                                max_patches=n_patches, random_state=i)
+    patches = [extract_patches_2d(faces[i], (patch_width, patch_width),
+                                  max_patches=n_patches, random_state=i)
             for i in range(n_samples)]
     patches = numpy.array(patches).reshape(-1, patch_width * patch_width)
 
     estimator = SparseAutoEncoder(n_filters=n_filters,
-                                  lmbd=0.00001,
+                                  lmbd=0.0001,
                                   beta=3,
                                   sparsityParam=0.01,
                                   std_dev=1.0)
     estimator.fit(patches)
-    #estimator.fit(patches[numpy.newaxis, 0])
 
     # Some plotting
     pylab.figure(0)
     for i in range(estimator.W_.shape[0]):
-        pylab.subplot(int(numpy.sqrt(n_filters)), int(numpy.sqrt(n_filters)), i + 1)
+        rows = max(int(numpy.sqrt(n_filters)), 2)
+        cols = max(int(numpy.sqrt(n_filters)), 2)
+        pylab.subplot(rows, cols, i + 1)
         pylab.pcolor(estimator.W_[i].reshape(patch_width, patch_width),
                      cmap=pylab.cm.gray)
         pylab.xticks(())
