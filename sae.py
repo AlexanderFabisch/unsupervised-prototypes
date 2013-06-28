@@ -1,8 +1,8 @@
 import numpy
 import pylab
+from scipy.io import loadmat
 from scipy.optimize import fmin_l_bfgs_b
 from sklearn.feature_extraction.image import extract_patches_2d
-from sklearn.datasets import fetch_olivetti_faces
 
 
 def check_grad(fun, grad, theta, eps=1e-4):
@@ -23,6 +23,7 @@ def check_grad(fun, grad, theta, eps=1e-4):
 
 def sigmoid(a):
     return 1 / (1 + numpy.exp(-a))
+
 def sigmoid_der(z):
     return z * (1-z)
 
@@ -132,19 +133,25 @@ class SparseAutoEncoder(object):
 if __name__ == "__main__":
     numpy.random.seed(0)
 
+    # Dataset is taken from Stanfords course:
+    # http://www.stanford.edu/class/cs294a/sparseAutoencoder.pdf
+    # http://ufldl.stanford.edu/wiki/index.php/Exercise:Sparse_Autoencoder
+    images = loadmat("IMAGES")["IMAGES"]
+    images = images.T
+    images -= images.min()
+    images /= images.max()
+
     patch_width = 16
     n_patches = 25
     n_filters = 25
 
-    dataset = fetch_olivetti_faces(shuffle=True)
-    faces = dataset.data
-    n_samples, n_features = faces.shape
-    faces = faces.reshape(n_samples, 64, 64)
-    patches = [extract_patches_2d(faces[i], (patch_width, patch_width),
+    n_samples, n_rows, n_cols = images.shape
+    n_features = n_rows * n_cols
+    patches = [extract_patches_2d(images[i], (patch_width, patch_width),
                                   max_patches=n_patches, random_state=i)
             for i in range(n_samples)]
     patches = numpy.array(patches).reshape(-1, patch_width * patch_width)
-    print("Dataset consists of %d faces" % n_samples)
+    print("Dataset consists of %d samples" % n_samples)
 
     estimator = SparseAutoEncoder(n_filters=n_filters,
                                   lmbd=0.0001, beta=3, sparsityParam=0.01,
