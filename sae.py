@@ -29,13 +29,12 @@ def sigmoid_der(z):
 
 
 class SparseAutoEncoder(object):
-    def __init__(self, n_filters, lmbd, beta, sparsityParam, std_dev, maxfun,
+    def __init__(self, n_filters, lmbd, beta, sparsityParam, maxfun,
                  verbose=False):
         self.n_filters = n_filters
         self.lmbd = lmbd
         self.beta = beta
         self.sparsityParam = sparsityParam
-        self.std_dev = std_dev
         self.maxfun = maxfun
         self.verbose = verbose
 
@@ -46,8 +45,12 @@ class SparseAutoEncoder(object):
         self.indices = (self.n_filters*self.n_inputs,
                         2*self.n_filters*self.n_inputs,
                         2*self.n_filters*self.n_inputs+self.n_filters)
-        theta = numpy.random.randn(self.n_filters*self.n_inputs*2
-            + self.n_filters + self.n_inputs) * self.std_dev
+        r = numpy.sqrt(6) / numpy.sqrt(self.n_filters + self.n_inputs + 1)
+        W1 = numpy.random.random((self.n_filters, self.n_inputs)) * 2 * r - r
+        W2 = numpy.random.random((self.n_inputs, self.n_filters)) * 2 * r - r
+        b1 = numpy.zeros(self.n_filters)
+        b2 = numpy.zeros(self.n_inputs)
+        theta = numpy.concatenate((W1.flatten(), W2.flatten(), b1, b2))
 
         def error(theta):
             return self.error(theta)
@@ -141,7 +144,7 @@ if __name__ == "__main__":
     images -= images.min()
     images /= images.max()
 
-    patch_width = 16
+    patch_width = 8
     n_patches = 25
     n_filters = 25
 
@@ -155,7 +158,7 @@ if __name__ == "__main__":
 
     estimator = SparseAutoEncoder(n_filters=n_filters,
                                   lmbd=0.0001, beta=3, sparsityParam=0.01,
-                                  std_dev=0.01, maxfun=1000, verbose=True)
+                                  maxfun=1000, verbose=True)
     estimator.fit(patches)
 
     pylab.figure(0)
@@ -168,9 +171,9 @@ if __name__ == "__main__":
         pylab.xticks(())
         pylab.yticks(())
     pylab.figure(1)
-    for i in range(estimator.W_.shape[0]):
-        rows = max(int(numpy.sqrt(n_filters)), 2)
-        cols = max(int(numpy.sqrt(n_filters)), 2)
+    for i in range(len(patches)):
+        rows = int(numpy.sqrt(len(patches))+1)
+        cols = int(numpy.sqrt(len(patches))+1)
         pylab.subplot(rows, cols, i + 1)
         pylab.imshow(patches[i].reshape((patch_width, patch_width)),
                      cmap=pylab.cm.gray)
