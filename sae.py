@@ -1,8 +1,8 @@
 import numpy
 import pylab
+from scipy.io import loadmat
 from scipy.optimize import fmin_l_bfgs_b
 from sklearn.feature_extraction.image import extract_patches_2d
-from sklearn.datasets import fetch_olivetti_faces
 
 
 def check_grad(fun, grad, theta, eps=1e-4):
@@ -23,18 +23,18 @@ def check_grad(fun, grad, theta, eps=1e-4):
 
 def sigmoid(a):
     return 1 / (1 + numpy.exp(-a))
+
 def sigmoid_der(z):
     return z * (1-z)
 
 
 class SparseAutoEncoder(object):
-    def __init__(self, n_filters, lmbd, beta, sparsityParam, std_dev, maxfun,
+    def __init__(self, n_filters, lmbd, beta, sparsityParam, maxfun,
                  verbose=False):
         self.n_filters = n_filters
         self.lmbd = lmbd
         self.beta = beta
         self.sparsityParam = sparsityParam
-        self.std_dev = std_dev
         self.maxfun = maxfun
         self.verbose = verbose
 
@@ -45,8 +45,12 @@ class SparseAutoEncoder(object):
         self.indices = (self.n_filters*self.n_inputs,
                         2*self.n_filters*self.n_inputs,
                         2*self.n_filters*self.n_inputs+self.n_filters)
-        theta = numpy.random.randn(self.n_filters*self.n_inputs*2
-            + self.n_filters + self.n_inputs) * self.std_dev
+        r = numpy.sqrt(6) / numpy.sqrt(self.n_filters + self.n_inputs + 1)
+        W1 = numpy.random.random((self.n_filters, self.n_inputs)) * 2 * r - r
+        W2 = numpy.random.random((self.n_inputs, self.n_filters)) * 2 * r - r
+        b1 = numpy.zeros(self.n_filters)
+        b2 = numpy.zeros(self.n_inputs)
+        theta = numpy.concatenate((W1.flatten(), W2.flatten(), b1, b2))
 
         def error(theta):
             return self.error(theta)
@@ -132,26 +136,37 @@ class SparseAutoEncoder(object):
 if __name__ == "__main__":
     numpy.random.seed(0)
 
-    patch_width = 16
-    n_patches = 25
+    # Dataset is taken from Stanfords course:
+    # http://www.stanford.edu/class/cs294a/sparseAutoencoder.pdf
+    # http://ufldl.stanford.edu/wiki/index.php/Exercise:Sparse_Autoencoder
+    images = loadmat("IMAGES")["IMAGES"]
+    images = images.T
+    for i in range(len(images)):
+        images[i] -= images[i].min()
+        images[i] /= images[i].max()
+
+    #for im in images:
+    #    pylab.imshow(im, cmap=pylab.cm.gray, interpolation="nearest")
+    #    pylab.show()
+
+    patch_width = 8
+    n_patches = 1000
     n_filters = 25
 
-    dataset = fetch_olivetti_faces(shuffle=True)
-    faces = dataset.data
-    n_samples, n_features = faces.shape
-    faces = faces.reshape(n_samples, 64, 64)
-    patches = [extract_patches_2d(faces[i], (patch_width, patch_width),
+    n_samples, n_rows, n_cols = images.shape
+    n_features = n_rows * n_cols
+    patches = [extract_patches_2d(images[i], (patch_width, patch_width),
                                   max_patches=n_patches, random_state=i)
             for i in range(n_samples)]
     patches = numpy.array(patches).reshape(-1, patch_width * patch_width)
-    print("Dataset consists of %d faces" % n_samples)
+    print("Dataset consists of %d samples" % n_samples)
 
     estimator = SparseAutoEncoder(n_filters=n_filters,
                                   lmbd=0.0001, beta=3, sparsityParam=0.01,
-                                  std_dev=0.01, maxfun=1000, verbose=True)
+                                  maxfun=1000, verbose=True)
     estimator.fit(patches)
 
-    pylab.figure(0)
+    pylab.figure(1)
     for i in range(estimator.W_.shape[0]):
         rows = max(int(numpy.sqrt(n_filters)), 2)
         cols = max(int(numpy.sqrt(n_filters)), 2)
@@ -160,13 +175,13 @@ if __name__ == "__main__":
                      cmap=pylab.cm.gray)
         pylab.xticks(())
         pylab.yticks(())
-    pylab.figure(1)
-    for i in range(estimator.W_.shape[0]):
-        rows = max(int(numpy.sqrt(n_filters)), 2)
-        cols = max(int(numpy.sqrt(n_filters)), 2)
-        pylab.subplot(rows, cols, i + 1)
+    pylab.figure(2)
+    n_plot_patches = numpy.min((len(patches), 196))
+    for i in range(n_plot_patches):
+        dim = int(numpy.sqrt(n_plot_patches))
+        pylab.subplot(dim, dim, i + 1)
         pylab.imshow(patches[i].reshape((patch_width, patch_width)),
-                     cmap=pylab.cm.gray)
+                     cmap=pylab.cm.gray, interpolation="nearest")
         pylab.xticks(())
         pylab.yticks(())
     pylab.show()
