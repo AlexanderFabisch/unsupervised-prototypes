@@ -33,21 +33,22 @@ class SparseFiltering(object):
         # Normalize each feature to be equally active by dividing each
         # feature by its l2-norm across all examples
         L2Fs = numpy.apply_along_axis(numpy.linalg.norm, 0, Fs)
-        NFs = (Fs / L2Fs[None, :]).T
+        NFs = Fs / L2Fs
         # Normalize features per example, so that they lie on the unit l2 -ball
-        L2Fn = numpy.apply_along_axis(numpy.linalg.norm, 0, NFs)
-        Fhat = NFs.T / L2Fn[:, None]
+        L2Fn = numpy.apply_along_axis(numpy.linalg.norm, 1, NFs)
+        Fhat = NFs / L2Fn[:, numpy.newaxis]
         # Compute sparsity of each feature over all example, i.e., compute
         # its l1-norm; the objective function is the sum over these
         # sparsities
         error = numpy.apply_along_axis(numpy.linalg.norm, 1, Fhat, 1).sum()
         # Backprop through each feedforward step
-        deltaW = self.__l2grad(NFs.T, Fhat, L2Fn, numpy.ones_like(Fhat))
-        deltaW = self.__l2grad(Fs.T, NFs, L2Fs, deltaW.T)
-        deltaW = (deltaW * (F.T / Fs.T)).dot(self.X)
+        Wd = self.__l2grad(NFs, Fhat, L2Fn, numpy.ones_like(Fhat))
+        Wd = self.__l2grad(Fs.T, NFs.T, L2Fs, Wd.T)
+        Wd = (Wd * (F / Fs).T).dot(self.X)
 
-        return error, deltaW.ravel()
+        return error, Wd.ravel()
 
     def __l2grad(self, X, Y, N, D):
         # Backpropagate through normalization
-        return D / N[:, None] - Y * (D * X).sum(1)[:, None] / (N ** 2)[:, None]
+        return D / N[:, numpy.newaxis] - \
+            Y * (D * X).sum(axis=1)[:, numpy.newaxis] / (N ** 2)[:, numpy.newaxis]
