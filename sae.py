@@ -4,12 +4,12 @@ from tools import sigmoid, sigmoid_der
 
 
 class SparseAutoEncoder(object):
-    def __init__(self, n_filters, lmbd, beta, sparsityParam, maxfun,
+    def __init__(self, n_filters, lmbd, beta, sparsity_param, maxfun,
                  verbose=False):
         self.n_filters = n_filters
         self.lmbd = lmbd
         self.beta = beta
-        self.sparsityParam = sparsityParam
+        self.sparsity_param = sparsity_param
         self.maxfun = maxfun
         self.verbose = verbose
 
@@ -66,10 +66,10 @@ class SparseAutoEncoder(object):
     def __error(self, meanZ1):
         error = numpy.sum(self.dEdZ2**2) / (2*self.n_samples) + \
             self.lmbd/2 * (numpy.sum(self.W1**2) + numpy.sum(self.W2**2)) + \
-            self.beta * numpy.sum(self.sparsityParam *
-                numpy.log(self.sparsityParam / meanZ1) +
-                (1 - self.sparsityParam) *
-                numpy.log((1 - self.sparsityParam) / (1 - meanZ1)))
+            self.beta * numpy.sum(self.sparsity_param *
+                numpy.log(self.sparsity_param / meanZ1) +
+                (1 - self.sparsity_param) *
+                numpy.log((1 - self.sparsity_param) / (1 - meanZ1)))
         return error
 
     def __grad(self, meanZ1):
@@ -80,7 +80,7 @@ class SparseAutoEncoder(object):
 
         self.dEdZ1 = self.Delta2.dot(self.W2)
         self.GD1 = sigmoid_der(self.Z1)
-        sparse = -self.sparsityParam / meanZ1 + (1-self.sparsityParam) / (1-meanZ1)
+        sparse = -self.sparsity_param / meanZ1 + (1-self.sparsity_param) / (1-meanZ1)
         self.Delta1 = (self.dEdZ1 + self.beta * sparse) * self.GD1
         W1d = self.Delta1.T.dot(self.X)/self.n_samples + self.lmbd * self.W1
         b1d = self.Delta1.mean(axis=0)

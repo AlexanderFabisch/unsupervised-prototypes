@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print("Dataset consists of %d samples" % n_samples)
 
     estimator = SparseAutoEncoder(n_filters=n_filters,
-                                  lmbd=0.0001, beta=3, sparsityParam=0.01,
+                                  lmbd=0.0001, beta=3, sparsity_param=0.01,
                                   maxfun=500, verbose=True)
     estimator.fit(patches)
 
