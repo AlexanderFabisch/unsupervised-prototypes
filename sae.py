@@ -95,3 +95,8 @@ class SparseAutoEncoder(object):
         W1, W2, self.b1, self.b2 = numpy.split(theta, self.indices)
         self.W1 = W1.reshape(self.n_filters, self.n_inputs)
         self.W2 = W2.reshape(self.n_inputs, self.n_filters)
+
+    def predict(self, X):
+        self.X = X
+        self.__forward()
+        return self.Z2

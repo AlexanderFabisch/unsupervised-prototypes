@@ -71,7 +71,8 @@ class RestrictedBoltzmannMachine(object):
                 self.bh_mom = self.alpha / self.batch_size * (pos_bh - neg_bh) + \
                     self.eta * self.bh_mom
                 self.bh += self.bh_mom
-            print "Finished iteration %d" % (epoch+1)
+            if self.verbose:
+                print("Finished iteration %d" % (epoch+1))
 
         self.W_ = self.W
 

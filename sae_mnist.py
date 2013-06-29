@@ -16,6 +16,10 @@ if __name__ == "__main__":
                                   verbose=True)
     estimator.fit(train_images)
 
+    reconstructed = estimator.predict(train_images)
+    error = numpy.sum((reconstructed - train_images)**2)
+    print("Reconstruction error = %f" % error)
+
     pylab.figure()
     pylab.subplots_adjust(wspace=0.0, hspace=0.0)
     for i in range(estimator.W1_.shape[0]):
