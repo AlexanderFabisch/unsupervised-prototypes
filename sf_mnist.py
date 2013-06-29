@@ -9,6 +9,7 @@ if __name__ == "__main__":
 
     train_images, _ = read(range(10), "training")
     train_images = train_images.reshape(-1, 784)[:10000] / 255.0
+    train_images -= train_images.mean(axis=0)
 
     n_filters = 196
     estimator = SparseFiltering(n_filters=n_filters, maxfun=500,
