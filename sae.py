@@ -29,12 +29,12 @@ def sigmoid_der(z):
 
 
 class SparseAutoEncoder(object):
-    def __init__(self, n_filters, lmbd, beta, sparsityParam, maxfun,
+    def __init__(self, n_filters, lmbd, beta, sparsity_param, maxfun,
                  verbose=False):
         self.n_filters = n_filters
         self.lmbd = lmbd
         self.beta = beta
-        self.sparsityParam = sparsityParam
+        self.sparsity_param = sparsity_param
         self.maxfun = maxfun
         self.verbose = verbose
 
@@ -45,138 +45,83 @@ class SparseAutoEncoder(object):
         self.indices = (self.n_filters*self.n_inputs,
                         2*self.n_filters*self.n_inputs,
                         2*self.n_filters*self.n_inputs+self.n_filters)
+
         r = numpy.sqrt(6) / numpy.sqrt(self.n_filters + self.n_inputs + 1)
-        W1 = numpy.random.random((self.n_filters, self.n_inputs)) * 2 * r - r
-        W2 = numpy.random.random((self.n_inputs, self.n_filters)) * 2 * r - r
-        b1 = numpy.zeros(self.n_filters)
-        b2 = numpy.zeros(self.n_inputs)
-        theta = numpy.concatenate((W1.flatten(), W2.flatten(), b1, b2))
+        self.W1 = numpy.random.random((self.n_filters, self.n_inputs)) * 2 * r - r
+        self.W2 = numpy.random.random((self.n_inputs, self.n_filters)) * 2 * r - r
+        self.b1 = numpy.zeros(self.n_filters)
+        self.b2 = numpy.zeros(self.n_inputs)
 
-        def error(theta):
-            return self.error(theta)
-        def grad(theta):
-            return self.grad(theta)
+        self.A1 = numpy.ndarray((self.n_samples, self.n_filters))
+        self.Z1 = numpy.ndarray((self.n_samples, self.n_filters))
+        self.A2 = numpy.ndarray((self.n_samples, self.n_inputs))
+        self.Z2 = numpy.ndarray((self.n_samples, self.n_inputs))
+        self.GD2 = numpy.ndarray((self.n_samples, self.n_inputs))
+        self.dEdZ2 = numpy.ndarray((self.n_samples, self.n_inputs))
+        self.Delta2 = numpy.ndarray((self.n_samples, self.n_inputs))
+        self.GD1 = numpy.ndarray((self.n_samples, self.n_filters))
+        self.dEdZ1 = numpy.ndarray((self.n_samples, self.n_filters))
+        self.Delta1 = numpy.ndarray((self.n_samples, self.n_filters))
 
-        #grad_error = check_grad(error, grad, theta, eps=1e-4)
-        #assert grad_error < 1e-4, "Gradient error = %f" % grad_error
+        theta = self.__fold(self.W1, self.W2, self.b1, self.b2)
+        def f(theta):
+            return self.error_grad(theta)
+        theta, _, _ = fmin_l_bfgs_b(f, theta, maxfun=self.maxfun,
+                                    iprint=1 if self.verbose else -1, m=20)
 
-        theta, s, d = fmin_l_bfgs_b(error, theta, grad,
-                                    maxfun=self.maxfun,
-                                    iprint=1 if self.verbose else -1)
-        W1, W2, b1, b2 = self.__vector_to_matrices(theta)
-        self.W_ = W1
-    
-    def __vector_to_matrices(self, theta):
-        w1, w2, b1, b2 = numpy.split(theta, self.indices)
-        W1 = w1.reshape((self.n_filters, self.n_inputs))
-        W2 = w2.reshape((self.n_inputs, self.n_filters))
-        return W1, W2, b1, b2
+        self.__unfold(theta)
+        self.W1_ = self.W1
+        self.W2_ = self.W2
+        self.b1_ = self.b1
+        self.b2_ = self.b2
 
-    def __forward(self, X):
-        A1 = X.dot(self.W1.T) + self.b1
-        Z1 = sigmoid(A1)
-        A2 = Z1.dot(self.W2.T) + self.b2
-        Z2 = sigmoid(A2)
-        return Z1, Z2
-    
-    def __cost(self, meanZ1, Z2, X):
-        dEdZ2 = Z2-X
-        cost = numpy.sum(dEdZ2**2) / (2*self.n_samples)
-        cost += self.lmbd/2 * (numpy.sum(self.W1**2) + numpy.sum(self.W2**2))
-        cost += self.beta * \
-            numpy.sum(self.sparsityParam *
-                      numpy.log(self.sparsityParam / meanZ1) +
-                      (1 - self.sparsityParam) *
-                      numpy.log((1 - self.sparsityParam) / (1 - meanZ1)))
-        return cost
-    
-    def __grad(self, Z1, meanZ1, Z2, X):
-        dEdZ2 = Z2-X
-        GD2 = sigmoid_der(Z2)
-        Delta2 = dEdZ2 * GD2
-        W2d = Delta2.T.dot(Z1)/self.n_samples + self.lmbd * self.W2
-        b2d = Delta2.mean(axis=0)
+    def __forward(self):
+        self.A1 = self.X.dot(self.W1.T) + self.b1
+        self.Z1 = sigmoid(self.A1)
+        self.A2 = self.Z1.dot(self.W2.T) + self.b2
+        self.Z2 = sigmoid(self.A2)
 
-        dEdZ1 = Delta2.dot(self.W2)
-        GD1 = sigmoid_der(Z1)
-        sparse = -self.sparsityParam / meanZ1 + (1-self.sparsityParam) / (1-meanZ1)
-        Delta1 = (dEdZ1 + self.beta * sparse) * GD1
-        W1d = Delta1.T.dot(X)/self.n_samples + self.lmbd * self.W1
-        b1d = Delta1.mean(axis=0)
-        assert W1d.shape == self.W1.shape
-        assert W2d.shape == self.W2.shape
-        assert b1d.shape == self.b1.shape
-        assert b2d.shape == self.b2.shape
-
-        grad = numpy.concatenate((W1d.flatten(), W2d.flatten(), b1d, b2d))
-        return grad
-    
-    def error(self, theta):
-        self.W1, self.W2, self.b1, self.b2 = self.__vector_to_matrices(theta)
-        Z1, Z2 = self.__forward(self.X)
-        cost = self.__cost(Z1.mean(axis=0), Z2, self.X)
-        return cost
-    
-    def grad(self, theta):
-        self.W1, self.W2, self.b1, self.b2 = self.__vector_to_matrices(theta)
-        Z1, Z2 = self.__forward(self.X)
-        grad = self.__grad(Z1, Z1.mean(axis=0), Z2, self.X)
-        assert grad.shape == theta.shape, str(grad.shape) + "!=" + str(theta.shape)
-        return grad
-    
     def error_grad(self, theta):
-        self.W1, self.W2, self.b1, self.b2 = self.__vector_to_matrices(theta)
-        Z1, Z2 = self.__forward(self.X)
-        meanZ1 = Z1.mean(axis=0)
-        cost = self.__cost(meanZ1, Z2, self.X)
-        grad = self.__grad(Z1, meanZ1, Z2, self.X)
-        assert grad.shape == theta.shape, str(grad.shape) + "!=" + str(theta.shape)
-        return cost, grad
+        self.__unfold(theta)
+        self.__forward()
+        self.dEdZ2 = self.Z2 - self.X
+        meanZ1 = self.Z1.mean(axis=0)
+        return self.__error(meanZ1), self.__grad(meanZ1)
 
-if __name__ == "__main__":
-    numpy.random.seed(0)
+    def __error(self, meanZ1):
+        error = numpy.sum(self.dEdZ2**2) / (2*self.n_samples) + \
+            self.lmbd/2 * (numpy.sum(self.W1**2) + numpy.sum(self.W2**2)) + \
+            self.beta * numpy.sum(self.sparsity_param *
+                numpy.log(self.sparsity_param / meanZ1) +
+                (1 - self.sparsity_param) *
+                numpy.log((1 - self.sparsity_param) / (1 - meanZ1)))
+        return error
 
-    # Dataset is taken from Stanfords course:
-    # http://www.stanford.edu/class/cs294a/sparseAutoencoder.pdf
-    # http://ufldl.stanford.edu/wiki/index.php/Exercise:Sparse_Autoencoder
-    images = loadmat("IMAGES")["IMAGES"]
-    images = images.T
-    images -= images.min()
-    images /= images.max()
+    def __grad(self, meanZ1):
+        self.GD2 = sigmoid_der(self.Z2)
+        self.Delta2 = self.dEdZ2 * self.GD2
+        W2d = self.Delta2.T.dot(self.Z1)/self.n_samples + self.lmbd * self.W2
+        b2d = self.Delta2.mean(axis=0)
 
-    patch_width = 8
-    n_patches = 25
-    n_filters = 25
+        self.dEdZ1 = self.Delta2.dot(self.W2)
+        self.GD1 = sigmoid_der(self.Z1)
+        sparse = -self.sparsity_param / meanZ1 + (1-self.sparsity_param) / (1-meanZ1)
+        self.Delta1 = (self.dEdZ1 + self.beta * sparse) * self.GD1
+        W1d = self.Delta1.T.dot(self.X)/self.n_samples + self.lmbd * self.W1
+        b1d = self.Delta1.mean(axis=0)
 
-    n_samples, n_rows, n_cols = images.shape
-    n_features = n_rows * n_cols
-    patches = [extract_patches_2d(images[i], (patch_width, patch_width),
-                                  max_patches=n_patches, random_state=i)
-            for i in range(n_samples)]
-    patches = numpy.array(patches).reshape(-1, patch_width * patch_width)
-    print("Dataset consists of %d samples" % n_samples)
+        grad = self.__fold(W1d, W2d, b1d, b2d)
+        return grad
 
-    estimator = SparseAutoEncoder(n_filters=n_filters,
-                                  lmbd=0.0001, beta=3, sparsityParam=0.01,
-                                  maxfun=1000, verbose=True)
-    estimator.fit(patches)
+    def __fold(self, W1, W2, b1, b2):
+        return numpy.concatenate((W1.ravel(), W2.ravel(), b1, b2))
 
-    pylab.figure(0)
-    for i in range(estimator.W_.shape[0]):
-        rows = max(int(numpy.sqrt(n_filters)), 2)
-        cols = max(int(numpy.sqrt(n_filters)), 2)
-        pylab.subplot(rows, cols, i + 1)
-        pylab.imshow(estimator.W_[i].reshape(patch_width, patch_width),
-                     cmap=pylab.cm.gray)
-        pylab.xticks(())
-        pylab.yticks(())
-    pylab.figure(1)
-    for i in range(len(patches)):
-        rows = int(numpy.sqrt(len(patches))+1)
-        cols = int(numpy.sqrt(len(patches))+1)
-        pylab.subplot(rows, cols, i + 1)
-        pylab.imshow(patches[i].reshape((patch_width, patch_width)),
-                     cmap=pylab.cm.gray)
-        pylab.xticks(())
-        pylab.yticks(())
-    pylab.show()
+    def __unfold(self, theta):
+        W1, W2, self.b1, self.b2 = numpy.split(theta, self.indices)
+        self.W1 = W1.reshape(self.n_filters, self.n_inputs)
+        self.W2 = W2.reshape(self.n_inputs, self.n_filters)
+
+    def predict(self, X):
+        self.X = X
+        self.__forward()
+        return self.Z2
