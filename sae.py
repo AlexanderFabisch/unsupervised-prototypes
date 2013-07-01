@@ -1,8 +1,5 @@
 import numpy
-import pylab
-from scipy.io import loadmat
 from scipy.optimize import fmin_l_bfgs_b
-from sklearn.feature_extraction.image import extract_patches_2d
 
 
 def check_grad(fun, grad, theta, eps=1e-4):
