@@ -16,9 +16,10 @@ class KMeans(object):
 			numpy.random.shuffle(indices)
 			for n in range(0, n_samples, self.batch_size):
 				M = self.X[n:min(n+self.batch_size, n_samples)]
-				d = [numpy.argmin(numpy.sum((self.C_ - self.X[j])**2, axis=1))
+				d = [numpy.argmin(numpy.sum((self.C_ - M[j])**2, axis=1))
 				     for j in range(self.batch_size)]
-				eta = 1.0 / numpy.bincount(d)
+				v = numpy.bincount(d)
+				eta = 1.0 / numpy.max((v, numpy.ones_like(v)*1e-8), axis=0)
 				for j in range(self.batch_size):
 					c = d[j]
 					self.C_[c] = (1.0-eta[c]) * self.C_[c] + eta[c] * self.X[j]
@@ -26,6 +27,6 @@ class KMeans(object):
 
 	def predict(self, X):
 		Z = numpy.array([numpy.sum((self.C_ - self.X[j])**2, axis=1)
-				    	 for j in range(self.batch_size)])
+				    	 for j in range(len(X))])
 		MU = Z.mean(axis=1)
 		return numpy.max((Z - MU[:, numpy.newaxis], numpy.zeros_like(Z)), axis=0)

@@ -31,7 +31,7 @@ if __name__ == "__main__":
     patches = numpy.array(patches).reshape(-1, patch_width * patch_width)
     print("Dataset consists of %d samples" % n_samples)
 
-    estimator = KMeans(n_filters=n_filters, batch_size=1000, n_iterations=1)
+    estimator = KMeans(n_filters=n_filters, batch_size=1000, n_iterations=200)
     estimator.fit(patches)
     print estimator.predict(patches)
 
