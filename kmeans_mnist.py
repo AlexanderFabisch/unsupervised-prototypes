@@ -1,7 +1,7 @@
 import numpy
 import pylab
-from kmeans import KMeans
-from unsupervised.mnist import read
+from unsupervised.kmeans import KMeans
+from mnist import read
 from openann import *
 
 

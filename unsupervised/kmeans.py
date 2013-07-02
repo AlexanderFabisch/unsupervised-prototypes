@@ -18,11 +18,11 @@ class KMeans(object):
 				M = self.X[n:min(n+self.batch_size, n_samples)]
 				d = [numpy.argmin(numpy.sum((self.C_ - M[j])**2, axis=1))
 				     for j in range(self.batch_size)]
-				v = numpy.bincount(d)
+				v = numpy.bincount(d, minlength=self.n_filters)
 				eta = 1.0 / numpy.max((v, numpy.ones_like(v)*1e-8), axis=0)
 				for j in range(self.batch_size):
 					c = d[j]
-					self.C_[c] = (1.0-eta[c]) * self.C_[c] + eta[c] * self.X[j]
+					self.C_[c] = (1.0-eta[c]) * self.C_[c] + eta[c] * M[j]
 			print "Iteration #%d finished." % (i+1)
 
 	def predict(self, X):
