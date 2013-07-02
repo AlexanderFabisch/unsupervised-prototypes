@@ -1,7 +1,7 @@
 import numpy
 import pylab
 from kmeans import KMeans
-from mnist import read
+from unsupervised.mnist import read
 from openann import *
 
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     test_images, T2 = load("testing", 5000)
 
     n_filters = 196
-    estimator = KMeans(n_filters=n_filters, batch_size=1000, n_iterations=5)
+    estimator = KMeans(n_filters=n_filters, batch_size=1000, n_iterations=1)
     estimator.fit(train_images)
     X = estimator.predict(train_images)
     X2 = estimator.predict(test_images)

@@ -1,6 +1,6 @@
 import numpy
 import pylab
-from sae import SparseAutoEncoder
+from unsupervised.sae import SparseAutoEncoder
 from mnist import read
 
 

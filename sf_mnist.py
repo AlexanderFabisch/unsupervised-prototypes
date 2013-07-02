@@ -1,6 +1,6 @@
 import numpy
 import pylab
-from sf import SparseFiltering
+from unsupervised.sf import SparseFiltering
 from mnist import read
 
 

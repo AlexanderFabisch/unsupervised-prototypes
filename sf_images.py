@@ -2,7 +2,7 @@ import numpy
 import pylab
 from scipy.io import loadmat
 from sklearn.feature_extraction.image import extract_patches_2d
-from sf import SparseFiltering
+from unsupervised.sf import SparseFiltering
 
 
 if __name__ == "__main__":
