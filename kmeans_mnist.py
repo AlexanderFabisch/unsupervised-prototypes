@@ -20,10 +20,11 @@ def scale_features(X, mean, std):
 if __name__ == "__main__":
     numpy.random.seed(0)
 
-    train_images, T = load("training", 10000)
+    train_images, T = load("training", 60000)
     test_images, T2 = load("testing", 10000)
+    print "Dataset loaded"
 
-    n_filters = 196
+    n_filters = 900
     estimator = KMeans(n_filters=n_filters, batch_size=1000, n_iterations=1)
     estimator.fit(train_images)
     X = estimator.predict(train_images)
@@ -32,27 +33,28 @@ if __name__ == "__main__":
     X_std = X.std(axis=0) + 1e-8
     X = scale_features(X, X_mean, X_std)
     X2 = scale_features(X2, X_mean, X_std)
+    print "Transformed datasets"
     ds = Dataset(X, T)
     vs = Dataset(X2, T2)
 
     net = Net()
-    net.set_regularization(l1_penalty=0.01)
     net.input_layer(ds.inputs())
     net.output_layer(ds.outputs(), Activation.LINEAR)
     net.set_error_function(Error.CE)
-    opt = MBSGD({"maximal_iterations" : 20})
+    opt = MBSGD({"maximal_iterations" : 100})
     opt.optimize(net, ds)
+    print "Training set:"
     print classification_hits(net, ds)
     print numpy.array(confusion_matrix(net, ds), dtype=numpy.int)
+    print "Validation set:"
     print classification_hits(net, vs)
     print numpy.array(confusion_matrix(net, vs), dtype=numpy.int)
 
     pylab.figure()
     pylab.subplots_adjust(wspace=0.0, hspace=0.0)
-    for i in range(estimator.C_.shape[0]):
-        rows = int(numpy.sqrt(n_filters))
-        cols = int(numpy.sqrt(n_filters))
-        pylab.subplot(rows, cols, i + 1)
+    n_cells = numpy.min((int(numpy.sqrt(n_filters)), 10))
+    for i in range(n_cells**2):
+        pylab.subplot(n_cells, n_cells, i + 1)
         pylab.imshow(estimator.C_[i].reshape(28, 28),
                      cmap=pylab.cm.gray, interpolation="nearest")
         pylab.xticks(())
