@@ -6,12 +6,12 @@ from openann import *
 
 
 def load(dataset_type, n_samples):
-    images, targets = read(range(10), dataset_type)
+    images, raw_targets = read(range(10), dataset_type)
     images = images.reshape(-1, 784)[:n_samples] / 255.0
-    targets = targets[:n_samples].flatten()
-    T = numpy.zeros((n_samples, 10))
-    T[(range(n_samples), targets)] = 1.0
-    return images, T
+    raw_targets = raw_targets[:n_samples].flatten()
+    targets = numpy.zeros((n_samples, 10))
+    targets[(range(n_samples), raw_targets)] = 1.0
+    return images, targets
 
 def scale_features(X, mean, std):
     return (X - mean) / std
@@ -20,8 +20,8 @@ def scale_features(X, mean, std):
 if __name__ == "__main__":
     numpy.random.seed(0)
 
-    train_images, T = load("training", 5000)
-    test_images, T2 = load("testing", 5000)
+    train_images, T = load("training", 10000)
+    test_images, T2 = load("testing", 10000)
 
     n_filters = 196
     estimator = KMeans(n_filters=n_filters, batch_size=1000, n_iterations=1)
@@ -36,10 +36,11 @@ if __name__ == "__main__":
     vs = Dataset(X2, T2)
 
     net = Net()
+    net.set_regularization(l1_penalty=0.01)
     net.input_layer(ds.inputs())
     net.output_layer(ds.outputs(), Activation.LINEAR)
     net.set_error_function(Error.CE)
-    opt = MBSGD({"maximal_iterations" : 100})
+    opt = MBSGD({"maximal_iterations" : 20})
     opt.optimize(net, ds)
     print classification_hits(net, ds)
     print numpy.array(confusion_matrix(net, ds), dtype=numpy.int)

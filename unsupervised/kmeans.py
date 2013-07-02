@@ -26,7 +26,7 @@ class KMeans(object):
 			print "Iteration #%d finished." % (i+1)
 
 	def predict(self, X):
-		Z = numpy.array([numpy.sum((self.C_ - self.X[j])**2, axis=1)
+		Z = numpy.array([numpy.sum((X[j] - self.C_)**2, axis=1)
 				    	 for j in range(len(X))])
 		MU = Z.mean(axis=1)
-		return numpy.max((Z - MU[:, numpy.newaxis], numpy.zeros_like(Z)), axis=0)
+		return numpy.max((MU[:, numpy.newaxis] - Z, numpy.zeros_like(Z)), axis=0)
