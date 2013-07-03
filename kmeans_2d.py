@@ -4,12 +4,13 @@ from unsupervised.kmeans import KMeans
 
 if __name__ == "__main__":
     numpy.random.seed(1)
-    X = numpy.vstack((numpy.random.randn(1000, 2)*0.3,
-                      numpy.random.randn(1000, 2)*0.3 + numpy.ones(2)))
+    X = numpy.vstack((numpy.random.randn(10000, 2)*0.3,
+                      numpy.random.randn(10000, 2)*0.3 + numpy.ones(2)))
 
-    estimator = KMeans(2, 200, 1)
+    estimator = KMeans(2, 200, 10)
     estimator.fit(X)
     print estimator.C_
+    print estimator.v
     Y = estimator.predict(X)
     print Y
 
