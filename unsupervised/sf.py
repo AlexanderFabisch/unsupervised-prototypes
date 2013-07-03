@@ -58,5 +58,4 @@ class SparseFiltering(object):
         self.Fhat = self.NFs / self.L2Fn[:, numpy.newaxis]
 
     def predict(self, X):
-        self.X = X
-        self.__forward()
+        return X.dot(self.W.T)
